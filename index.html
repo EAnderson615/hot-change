@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -90,6 +89,7 @@ body.dark .dashboard {
 .quick { background:#009688; }
 .pause { background:#ff3b30; }
 .darkBtn { background:#444; }
+.resetBtn { background:#cc0000; }
 </style>
 </head>
 
@@ -110,6 +110,7 @@ body.dark .dashboard {
   <button class="quick" onclick="toggleQuickMode()">Quick Mode</button>
   <button class="pause" onclick="toggleTracking()" id="pauseBtn">Pause Tracking</button>
   <button class="darkBtn" onclick="toggleDarkMode()">Dark Mode</button>
+  <button class="resetBtn" onclick="resetAll()">Reset</button>
 </div>
 
 <div class="dashboard" id="dashboard"></div>
@@ -167,6 +168,22 @@ function toggleDarkMode(){
   darkMode = !darkMode;
   localStorage.setItem('darkMode', JSON.stringify(darkMode));
   applyDarkMode();
+}
+
+// ✅ RESET
+function resetAll(){
+  const confirmReset = confirm("Are you sure you wish to reset?");
+  if (!confirmReset) return;
+
+  counts = {};
+  active = [];
+  favorites = [];
+  history = [];
+
+  localStorage.clear();
+
+  save();
+  render();
 }
 
 // ✅ TAP
@@ -336,4 +353,3 @@ render();
 </script>
 </body>
 </html>
-
