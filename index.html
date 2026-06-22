@@ -2,52 +2,230 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hot Change</title>
+<title>Hot Change Tracker</title>
+
 <style>
-body { font-family: Arial; padding: 15px; }
-button { width: 100%; padding: 18px; margin: 6px 0; font-size: 18px; border-radius:10px; }
-.card { border: 1px solid #ccc; border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+body { font-family: Arial; padding: 15px; background:#f5f5f5; }
+h2 { margin-bottom:5px; }
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 4px 0;
+  font-size: 15px;
+  border-radius:10px;
+  border:none;
+  background:#007AFF;
+  color:white;
+}
+
+.card { border-radius:12px; padding:10px; margin-bottom:6px; background:white; border:1px solid #ccc; }
+.card.active { border:2px solid green; }
+.card.warning { background:#fff3cd; border:2px solid #ffcc00; }
+.card.danger { background:#ffe5e5; border:2px solid red; }
+.topbar { display:flex; gap:6px; margin-bottom:10px; flex-wrap: wrap; }
+input { flex:1; padding:10px; font-size:14px; border-radius:10px; border:1px solid #ccc; }
+
+
+.undo { background:#ff9500; }
+.export { background:#34C759; }
+.favorite { background:#5856d6; }
+.toggle { background:#222; }
+.quick { background:#009688; }
+.pause { background:#ff3b30; }
+.dashboard { background:white; padding:10px; border-radius:10px; margin-bottom:10px; }
+.hidden { display:none; }
 </style>
 </head>
+
 <body>
 
 <h2>Hot Change Tracker</h2>
 <p id="date"></p>
+
+<div class="topbar">
+  <input id="search" placeholder="Search employee..." oninput="render()">
+  <button class="undo" onclick="undoLast()">Undo</button>
+</div>
+
+<div class="topbar">
+  <button class="export" onclick="exportCSV()">Export</button>
+  <button class="toggle" onclick="toggleFavorites()">Favorites</button>
+  <button class="toggle" onclick="toggleStats()">Stats</button>
+  <button class="quick" onclick="toggleQuickMode()">Quick Mode</button>
+  <button class="pause" onclick="toggleTracking()" id="pauseBtn">Pause Tracking</button>
+</div>
+
+<div class="dashboard" id="dashboard"></div>
+<div class="dashboard hidden" id="stats"></div>
+
+
 <div id="list"></div>
 
 <script>
-const employees = ["Employee 1","Employee 2","Employee 3","Employee 4","Employee 5"];
-let counts = JSON.parse(localStorage.getItem('counts') || '{}');
 
-document.getElementById('date').innerText = "Today: " + new Date().toLocaleDateString();
+// 👉 ADD YOUR EMPLOYEES
+const employees = [
+"Employee 1","Employee 2","Employee 3","Employee 4","Employee 5"
+];
 
-function save() {
+let counts = JSON.parse(localStorage.getItem('counts')||'{}');
+let active = JSON.parse(localStorage.getItem('active')||'[]');
+let favorites = JSON.parse(localStorage.getItem('favorites')||'[]');
+let history = JSON.parse(localStorage.getItem('history')||'[]');
+let lastDate = localStorage.getItem('lastDate');
+let showFavorites = false;
+let showStats = false;
+let quickMode = JSON.parse(localStorage.getItem('quickMode')||'false');
+let trackingPaused = JSON.parse(localStorage.getItem('trackingPaused')||'false');
+const today = new Date().toLocaleDateString();
+
+// ✅ AUTO-INCREMENT (ONLY IF NOT PAUSED)
+if (!trackingPaused && lastDate !== today) {
+  active.forEach(n => counts[n] = (counts[n]||0)+1);
+  localStorage.setItem('lastDate', today);
+}
+
+function save(){
   localStorage.setItem('counts', JSON.stringify(counts));
+  localStorage.setItem('active', JSON.stringify(active));
+  localStorage.setItem('favorites', JSON.stringify(favorites));
+  localStorage.setItem('history', JSON.stringify(history));
+  localStorage.setItem('quickMode', JSON.stringify(quickMode));
+  localStorage.setItem('trackingPaused', JSON.stringify(trackingPaused));
 }
 
-function tap(name) {
-  counts[name] = (counts[name] || 0) + 1;
-  save();
-  render();
+function tap(name){
+  history.push(JSON.stringify({counts,active,favorites}));
+  active = active.includes(name) ? active.filter(n=>n!==name) : [...active,name];
+  save(); render();
 }
 
-function render() {
-  const div = document.getElementById('list');
-  div.innerHTML = '';
-  employees.forEach(name => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <b>${name}</b><br>
-      Total: ${counts[name] || 0}<br>
-      <button onclick="tap('${name}')">+ Hot Change</button>
-    `;
-    div.appendChild(card);
-  });
+
+function toggleFav(name){
+  favorites = favorites.includes(name) ? favorites.filter(n=>n!==name) : [...favorites,name];
+  save(); render();
+}
+
+function undoLast(){
+  const last = history.pop(); if(!last) return;
+  const prev = JSON.parse(last);
+  counts=prev.counts; active=prev.active; favorites=prev.favorites||[];
+  save(); render();
+}
+
+function toggleQuickMode(){
+  quickMode = !quickMode;
+  save(); render();
+}
+
+
+function toggleTracking(){
+  trackingPaused = !trackingPaused;
+  save(); render();
+}
+
+
+function exportCSV(){
+  const rows=[["Name","Days","Active","Favorite"]];
+  employees.forEach(n=>{
+    rows.push([n,counts[n]||0,active.includes(n)?"Yes":"No",favorites.includes(n)?"Yes":"No"]);
+  });
+  const csv = rows.map(r=>r.join(",")).join("
+");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download="hot-change.csv";
+  a.click();
+}
+
+function toggleFavorites(){ showFavorites=!showFavorites; render(); }
+function toggleStats(){ showStats=!showStats; render(); }
+
+
+function drawDashboard(){
+  const top=[...employees].sort((a,b)=>(counts[b]||0)-(counts[a]||0)).slice(0,5);
+  let html="<b>Top Overtime</b><br>";
+  top.forEach(n=> html+=`${n}: ${counts[n]||0}<br>`);
+  document.getElementById('dashboard').innerHTML=html;
+}
+
+
+function drawStats(){
+  const totalEmployees=employees.length;
+  const avg=(Object.values(counts).reduce((a,b)=>a+b,0)/totalEmployees)||0;
+  const max=Math.max(...employees.map(n=>counts[n]||0));
+
+
+  document.getElementById('stats').innerHTML=`
+    <b>Stats</b><br>
+    Employees: ${totalEmployees}<br>
+    Avg Days: ${avg.toFixed(1)}<br>
+    Max Days: ${max}<br>
+    Active Now: ${active.length}
+  `;
+}
+
+
+function render(){
+
+
+  document.getElementById('date').innerText =
+    "Today: "+today + (trackingPaused ? " (PAUSED)" : "");
+
+
+  document.getElementById('pauseBtn').innerText = trackingPaused ? "Resume Tracking" : "Pause Tracking";
+
+
+  drawDashboard(); drawStats();
+  document.getElementById('stats').classList.toggle('hidden', !showStats);
+
+
+  const search=document.getElementById('search').value.toLowerCase();
+  const div=document.getElementById('list');
+  div.innerHTML='';
+
+  let list=[...employees];
+
+
+  if (quickMode) {
+    list = employees.filter(n => active.includes(n) || favorites.includes(n));
+  }
+
+
+  if(showFavorites) list=list.filter(n=>favorites.includes(n));
+
+  list.sort((a,b)=>(counts[b]||0)-(counts[a]||0));
+
+  list.filter(n=>n.toLowerCase().includes(search)).forEach(name=>{
+
+    const total=counts[name]||0;
+    const isActive=active.includes(name);
+
+    let cls="card";
+    if(total>7) cls+=" danger";
+    else if(total>=5) cls+=" warning";
+    if(isActive) cls+=" active";
+
+
+    const card=document.createElement('div');
+    card.className=cls;
+
+    card.innerHTML=`
+      <b>${name}</b><br>
+      Total: ${total}<br>
+      <button onclick="tap('${name}')">${isActive?'STOP':'START'}</button>
+      <button class="favorite" onclick="toggleFav('${name}')">
+        ${favorites.includes(name)?'★ Fav':'☆ Fav'}
+      </button>
+    `;
+
+    div.appendChild(card);
+  });
 }
 
 render();
-</script>
 
+</script>
 </body>
-</html>
