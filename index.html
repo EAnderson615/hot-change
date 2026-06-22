@@ -6,8 +6,17 @@
 <title>B Crew Hot Change Tracker</title>
 
 <style>
-body { font-family: Arial; padding: 15px; background:#f5f5f5; }
-h2 { margin-bottom:5px; }
+body {
+  font-family: Arial;
+  padding: 15px;
+  background:#f5f5f5;
+  color:#000;
+}
+
+body.dark {
+  background:#121212;
+  color:#fff;
+}
 
 button {
   width: 100%;
@@ -20,6 +29,8 @@ button {
   color:white;
 }
 
+body.dark button { background:#1e88e5; }
+
 .card {
   border-radius:12px;
   padding:10px;
@@ -28,9 +39,14 @@ button {
   border:1px solid #ccc;
 }
 
+body.dark .card {
+  background:#1e1e1e;
+  border-color:#444;
+}
+
 .card.active { border:2px solid green; }
-.card.warning { background:#fff3cd; border:2px solid #ffcc00; }
-.card.danger { background:#ffe5e5; border:2px solid red; }
+.card.warning { background:#fff3cd; }
+.card.danger { background:#ffe5e5; }
 
 .topbar {
   display:flex;
@@ -47,12 +63,11 @@ input {
   border:1px solid #ccc;
 }
 
-.undo { background:#ff9500; }
-.export { background:#34C759; }
-.favorite { background:#5856d6; }
-.toggle { background:#222; }
-.quick { background:#009688; }
-.pause { background:#ff3b30; }
+body.dark input {
+  background:#2a2a2a;
+  color:white;
+  border:1px solid #555;
+}
 
 .dashboard {
   background:white;
@@ -61,13 +76,25 @@ input {
   margin-bottom:10px;
 }
 
+body.dark .dashboard {
+  background:#1e1e1e;
+}
+
 .hidden { display:none; }
+
+.undo { background:#ff9500; }
+.export { background:#34C759; }
+.favorite { background:#5856d6; }
+.toggle { background:#222; }
+.quick { background:#009688; }
+.pause { background:#ff3b30; }
+.darkBtn { background:#444; }
 </style>
 </head>
 
 <body>
 
-<h2>Hot Change Tracker</h2>
+<h2>B Crew Hot Change Tracker</h2>
 <p id="date"></p>
 
 <div class="topbar">
@@ -81,6 +108,7 @@ input {
   <button class="toggle" onclick="toggleStats()">Stats</button>
   <button class="quick" onclick="toggleQuickMode()">Quick Mode</button>
   <button class="pause" onclick="toggleTracking()" id="pauseBtn">Pause Tracking</button>
+  <button class="darkBtn" onclick="toggleDarkMode()">Dark Mode</button>
 </div>
 
 <div class="dashboard" id="dashboard"></div>
@@ -99,6 +127,7 @@ const employees = [
 "Employee 5"
 ];
 
+// STATE
 let counts = JSON.parse(localStorage.getItem('counts')||'{}');
 let active = JSON.parse(localStorage.getItem('active')||'[]');
 let favorites = JSON.parse(localStorage.getItem('favorites')||'[]');
@@ -109,6 +138,7 @@ let showFavorites = false;
 let showStats = false;
 let quickMode = JSON.parse(localStorage.getItem('quickMode')||'false');
 let trackingPaused = JSON.parse(localStorage.getItem('trackingPaused')||'false');
+let darkMode = JSON.parse(localStorage.getItem('darkMode')||'false');
 
 const today = new Date().toLocaleDateString();
 
@@ -127,6 +157,18 @@ function save(){
   localStorage.setItem('trackingPaused', JSON.stringify(trackingPaused));
 }
 
+// ✅ DARK MODE
+function applyDarkMode(){
+  document.body.classList.toggle('dark', darkMode);
+}
+
+function toggleDarkMode(){
+  darkMode = !darkMode;
+  localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  applyDarkMode();
+}
+
+// ✅ TAP
 function tap(name){
   history.push(JSON.stringify({counts,active,favorites}));
 
@@ -140,6 +182,7 @@ function tap(name){
   render();
 }
 
+// ✅ FAVORITES
 function toggleFav(name){
   favorites = favorites.includes(name)
     ? favorites.filter(n=>n!==name)
@@ -149,6 +192,7 @@ function toggleFav(name){
   render();
 }
 
+// ✅ UNDO
 function undoLast(){
   const last = history.pop();
   if(!last) return;
@@ -162,18 +206,13 @@ function undoLast(){
   render();
 }
 
-function toggleQuickMode(){
-  quickMode = !quickMode;
-  save();
-  render();
-}
+// ✅ MODES
+function toggleQuickMode(){ quickMode=!quickMode; save(); render(); }
+function toggleTracking(){ trackingPaused=!trackingPaused; save(); render(); }
+function toggleFavorites(){ showFavorites=!showFavorites; render(); }
+function toggleStats(){ showStats=!showStats; render(); }
 
-function toggleTracking(){
-  trackingPaused = !trackingPaused;
-  save();
-  render();
-}
-
+// ✅ EXPORT
 function exportCSV(){
   const rows = [["Name","Days","Active","Favorite"]];
 
@@ -195,9 +234,7 @@ function exportCSV(){
   a.click();
 }
 
-function toggleFavorites(){ showFavorites=!showFavorites; render(); }
-function toggleStats(){ showStats=!showStats; render(); }
-
+// ✅ DASHBOARD
 function drawDashboard(){
   const top = [...employees]
     .sort((a,b)=>(counts[b]||0)-(counts[a]||0))
@@ -212,6 +249,7 @@ function drawDashboard(){
   document.getElementById('dashboard').innerHTML = html;
 }
 
+// ✅ STATS
 function drawStats(){
   const totalEmployees = employees.length;
   const totalDays = Object.values(counts).reduce((a,b)=>a+b,0);
@@ -227,6 +265,7 @@ function drawStats(){
   `;
 }
 
+// ✅ RENDER
 function render(){
 
   document.getElementById('date').innerText =
@@ -289,9 +328,10 @@ function render(){
     });
 }
 
+// ✅ START
+applyDarkMode();
 render();
 
 </script>
 </body>
 </html>
-
