@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hot Change</title>
+<style>
+body { font-family: Arial; padding: 15px; }
+button { width: 100%; padding: 18px; margin: 6px 0; font-size: 18px; border-radius:10px; }
+.card { border: 1px solid #ccc; border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Hot Change Tracker</h2>
+<p id="date"></p>
+<div id="list"></div>
+
+<script>
+const employees = ["Employee 1","Employee 2","Employee 3","Employee 4","Employee 5"];
+let counts = JSON.parse(localStorage.getItem('counts') || '{}');
+
+document.getElementById('date').innerText = "Today: " + new Date().toLocaleDateString();
+
+function save() {
+  localStorage.setItem('counts', JSON.stringify(counts));
+}
+
+function tap(name) {
+  counts[name] = (counts[name] || 0) + 1;
+  save();
+  render();
+}
+
+function render() {
+  const div = document.getElementById('list');
+  div.innerHTML = '';
+  employees.forEach(name => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <b>${name}</b><br>
+      Total: ${counts[name] || 0}<br>
+      <button onclick="tap('${name}')">+ Hot Change</button>
+    `;
+    div.appendChild(card);
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
